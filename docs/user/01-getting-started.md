@@ -1,7 +1,7 @@
 # TinyCo — Employee Getting Started Guide
 
 **Document Type:** User Documentation  
-**Author:** Will Chang, IT Operations Engineer  
+**Author:** Will Chang, Sr. IT Operations Engineer  
 **Audience:** All TinyCo Employees  
 **Last Updated:** April 2026
 
@@ -108,8 +108,8 @@ equivalent to Slack.
 
 1. Ensure Tailscale shows **Connected** in your system tray
 2. Open your browser and go to:
-https://tinyco-vm.tail7ee901.ts.net/tinycoddg
-3. Click **Login with TinyCo SSO**
+https://tinyco-vm.hair-squeaker.ts.net/tinycoddg
+3. Click **Sign in with Entra ID**
 4. Sign in with your TinyCo email
 5. Approve the MFA prompt on your phone
 6. You will land in **Town Square** — TinyCo's main channel
@@ -143,7 +143,7 @@ Elastic is TinyCo's platform for infrastructure monitoring
 and log analysis. Access is provided to relevant teams only.
 
 1. Go to https://tinyco-prod-cluster-3acb9f.kb.westus2.azure.elastic-cloud.com/
-2. Click **Libana login with TinyCo SSO**
+2. Click **Kibana Sign in with Entra ID SSO**
 3. Sign in with your TinyCo email
 4. Approve the MFA prompt on your phone
 

@@ -9,13 +9,12 @@
 
 A personal lab project demonstrating enterprise-grade Microsoft Entra ID 
 (formerly Azure Active Directory) identity infrastructure, built entirely 
-with Terraform IaC (Infrastructure as Code) and secured with a Zero Trust 
-identity and network architecture.
+with Terraform IaC (Infrastructure as Code) and secured with a Zero Trust network architecture.
 
 This lab simulates a real-world identity migration for TinyCo — a 
 fictional 89-person startup — covering the full identity lifecycle from 
 HR data ingestion to automated user provisioning, SSO across multiple 
-SaaS platforms, and network-level Zero Trust identity enforcement via Tailscale.
+SaaS platforms, and network-level Zero Trust enforcement via Tailscale.
 
 ---
 
@@ -161,5 +160,3 @@ searches, no accidental mass deprovisioning risk.
 - `terraform.tfvars` is gitignored — all secrets stay local
 - SSH port 22 is closed to the public internet — VM accessible via Tailscale only
 - All app access enforced via Entra ID group assignments and Conditional Access
-
-  

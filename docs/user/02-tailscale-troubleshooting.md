@@ -1,7 +1,7 @@
 # TinyCo — Tailscale VPN Troubleshooting Guide
 
 **Document Type:** User Documentation  
-**Author:** Will Chang, IT Operations Engineer  
+**Author:** Will Chang, Sr. IT Operations Engineer  
 **Audience:** All TinyCo Employees  
 **Last Updated:** April 2026  
 **Reference:** https://tailscale.com/kb/
@@ -28,7 +28,7 @@ Before contacting ITOps, run through this checklist:
 - [ ] You can see `tinyco-vm` listed as a connected machine 
       in Tailscale
 - [ ] You are using the correct URL for Mattermost:
-      `https://tinyco-vm.tail7ee901.ts.net/tinycoddg`
+      `https://tinyco-vm.hair-squeaker.ts.net/`
 
 ---
 
@@ -49,7 +49,7 @@ URL times out or shows an error page.
 
 1. Verify you are using the exact correct URL — copy and paste 
    this directly:
-https://tinyco-vm.tail7ee901.ts.net/tinycoddg
+https://tinyco-vm.hair-squeaker.ts.net/
 
 2. Click the Tailscale icon in your system tray → confirm 
    `tinyco-vm` appears in the list of connected machines with 
@@ -230,7 +230,7 @@ before it even reaches the browser.
 **Steps to proceed:**
 
 - **Chrome/Edge:** Click **Advanced** → **Proceed to 
-  tinyco-vm.tail7ee901.ts.net (unsafe)**
+  tinyco-vm.hair-squeaker.ts.net (unsafe)**
 - **Firefox:** Click **Advanced** → **Accept the Risk 
   and Continue**
 - **Safari:** Click **Show Details** → **visit this website**

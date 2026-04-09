@@ -1,10 +1,10 @@
 # TinyCo Entra ID — Setup & Recreation Guide
 
 **Document Type:** Admin Documentation  
-**Author:** Will Chang, IT Operations Engineer  
+**Author:** Will Chang, Sr. IT Operations Engineer  
 **Audience:** TinyCo IT Administrator  
 **Last Updated:** April 2026  
-**Repository:** https://github.com/WCTinyCoDDG/WC-TinyCo-Entra-Migration
+**Repository:** https://github.com/willshchang/WSHC-Entra-IaC-Zero-Trust-Lab
 
 ---
 
@@ -55,7 +55,7 @@ see [ARCHITECTURE.md](../ARCHITECTURE.md).
 | Tailscale Premium | VPN with SSO | ~$18 USD/month |
 | GitHub | Code repository | Free |
 
-> **Tailscale note:** The free trial lasts 14 days. Since the DDG 
+> **Tailscale note:** The free trial lasts 14 days. Since the 
 > review window extends beyond 14 days, Tailscale Premium was chosen 
 > to ensure the environment remains accessible throughout the full 
 > review period. The $18 USD/month cost for 1 active user falls 
@@ -175,8 +175,8 @@ terraform --version
 ### 3.1 Clone the Repository
 ```bash
 cd ~/Desktop
-git clone https://github.com/WCTinyCoDDG/WC-TinyCo-Entra-Migration.git
-cd WC-TinyCo-Entra-Migration
+git clone https://github.com/willshchang/WSHC-Entra-IaC-Zero-Trust-Lab.git
+cd WSHC-Entra-IaC-Zero-Trust-Lab
 code .
 ```
 
@@ -381,7 +381,7 @@ for HTTPS termination.
 Full setup documented in: 
 [Mattermost SSO Troubleshooting](./troubleshooting/mattermost-sso-troubleshooting.md)
 
-**Access URL:** `https://tinyco-vm.tail7ee901.ts.net/tinycoddg`
+**Access URL:** `https://tinyco-vm.hair-squeaker.ts.net/tinycoddg`
 
 ### 7.3 Tableau Cloud
 
@@ -457,5 +457,5 @@ Full setup documented in:
 | Break-glass Account | `admin.test@TinyCoDDG.onmicrosoft.com` |
 | VM Public IP | `20.63.73.34` |
 | VM Tailscale IP | `100.83.194.101` |
-| Tailscale Hostname | `tinyco-vm.tail7ee901.ts.net` |
+| Tailscale Hostname | `tinyco-vm.hair-squeaker.ts.net` |
 | Break-glass Password | Delivered via submission notes |

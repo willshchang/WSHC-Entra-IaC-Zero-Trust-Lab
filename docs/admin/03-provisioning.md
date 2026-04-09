@@ -1,10 +1,10 @@
 # TinyCo Entra ID — User & Group Provisioning Guide
 
 **Document Type:** Admin Documentation  
-**Author:** Will Chang, IT Operations Engineer  
+**Author:** Will Chang, Sr. IT Operations Engineer  
 **Audience:** TinyCo IT Administrator  
 **Last Updated:** April 2026  
-**Repository:** https://github.com/WCTinyCoDDG/WC-TinyCo-Entra-Migration
+**Repository:** https://github.com/willshchang/WSHC-Entra-IaC-Zero-Trust-Lab
 
 ---
 

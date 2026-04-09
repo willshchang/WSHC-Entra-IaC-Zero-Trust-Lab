@@ -1,10 +1,10 @@
 # TinyCo Entra ID — Architecture & Technical Design
 
 **Document Type:** Technical Architecture  
-**Author:** Will Chang, IT Operations Engineer
-**Audience:** DuckDuckGO Review Team   
+**Author:** Will Chang, Sr. IT Operations Engineer
+**Audience:** Reviewer
 **Last Updated:** April 2026  
-**Repository:** https://github.com/WCTinyCoDDG/WC-TinyCo-Entra-Migration
+**Repository:** https://github.com/willshchang/WSHC-Entra-IaC-Zero-Trust-Lab
 
 ---
 

@@ -1,10 +1,10 @@
 # TinyCo Entra ID — Security & Privilege Model
 
 **Document Type:** Admin Documentation  
-**Author:** Will Chang, IT Operations Engineer  
+**Author:** Will Chang, Sr. IT Operations Engineer  
 **Audience:** TinyCo IT Administrator  
 **Last Updated:** April 2026  
-**Repository:** https://github.com/WCTinyCoDDG/WC-TinyCo-Entra-Migration
+**Repository:** https://github.com/willshchang/WSHC-Entra-IaC-Zero-Trust-Lab
 
 ---
 
@@ -208,7 +208,7 @@ of more granular, auditable custom policies.
 
 **Account:** `admin.test@TinyCoDDG.onmicrosoft.com`  
 **Role:** Global Administrator  
-**Purpose:** Emergency access and DDG reviewer testing  
+**Purpose:** Emergency access and lab reviewer testing  
 **Password:** Delivered via submission notes
 
 NOTE: Tailscale admin console access must be granted manually after the reviewer's first login by an existing admin or owner.
@@ -228,7 +228,7 @@ The break-glass account is a member of the
 `Security-Exclusion-Emergency` group, which is excluded from both 
 CA policies. This ensures:
 
-- DDG reviewers can log in without MFA configured on their device
+- Lab reviewers can log in without MFA configured on their device
 - In a real emergency where all other admin accounts are locked, 
   this account provides guaranteed access to the tenant
 
@@ -253,7 +253,7 @@ decision:
 > effect and no MFA is required on subsequent logins. This 
 > confirms the CA exclusion is working correctly.
 
-**For DDG reviewer:** When logging in with the break-glass account 
+**For lab reviewer:** When logging in with the break-glass account 
 for the first time, Microsoft Authenticator setup will be prompted. 
 You may skip this prompt — it does not affect your ability to 
 access and inspect the tenant.
@@ -288,4 +288,3 @@ directly informed the decisions made here:
 
 The same principles that protect patient data at a 160,000-user 
 healthcare organisation apply equally to protecting user privacy 
-at a privacy-first technology company like DuckDuckGo.
