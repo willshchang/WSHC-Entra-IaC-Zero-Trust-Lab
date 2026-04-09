@@ -38,7 +38,7 @@ management), see [Admin Documentation](./admin/).
 ---
 
 ## Glossary
-```
+
 | Term | Full Name | Definition |
 |---|---|---|
 | **ABAC** | Attribute-Based Access Control | Access decisions driven by user attributes rather than manual assignments |
@@ -58,7 +58,7 @@ management), see [Admin Documentation](./admin/).
 | **BOM** | Byte Order Mark | Invisible UTF-8 signature Windows adds to CSV files, breaks Terraform csvdecode |
 | **ACL** | Access Control List | Tailscale's internal network routing rules |
 | **MyApps** | Microsoft MyApps Portal | The end-user portal at myapps.microsoft.com showing all assigned apps |
-```
+
 ---
 
 ## System Overview
@@ -271,7 +271,7 @@ SCIM syncs to Tableau (~40 min)
 User's access reflects their current role — zero IT intervention
 
 ### Self-Healing Patterns
-```
+
 | Pattern | Mechanism | Trigger |
 |---|---|---|
 | **Dynamic group membership** | ABAC rule evaluates `department` attribute | `terraform apply` writes new department value |
@@ -280,7 +280,7 @@ User's access reflects their current role — zero IT intervention
 | **Break-glass name derivation** | `title(split(".", prefix))` generates display name | `grader_account_prefix` changed in tfvars |
 | **CA exclusion inheritance** | Group membership triggers policy exclusion | User added to Security-Exclusion-Emergency |
 | **Attribute enrichment cascade** | One CSV `team` value writes `department` + `job_title` | Single CSV column change |
-```
+
 ---
 
 ## App Registration — Gallery vs Custom
@@ -313,14 +313,14 @@ Tableau, Elastic) were registered as custom OIDC apps via Terraform's
 - Days of debugging that would have been avoided with gallery registration
 
 ### App Registration Decision Matrix
-```
+
 | App | Type | Protocol | Gallery Available | SCIM |
 |---|---|---|---|---|
 | **Tailscale** | Multi-tenant SaaS | OIDC | ✅ Auto-registers on admin login | ❌ Enterprise plan required |
 | **Mattermost** | Self-hosted | SAML | ❌ Custom registration required | ❌ Vendor not supported |
 | **Tableau** | SaaS | SAML | ✅ Gallery app available | ✅ Requires SAML first |
 | **Elastic** | Multi-tenant SaaS | OIDC/SAML | ✅ Gallery app available | ❌ Custom domain required |
-```
+
 ### How to Check the Gallery (Manual — Recommended)
 
 1. **Entra admin centre** → **Enterprise Applications** → 
@@ -418,7 +418,7 @@ terraform-prod/
 └── rbac-mattermost.tf   ← Mattermost admin assignments
 
 ### Least Privilege Role Matrix (Production)
-```
+
 | Team | Tailscale | Mattermost | Tableau | Elastic |
 |---|---|---|---|---|
 | **ITOps** | User | Admin | Creator | Admin |
@@ -430,7 +430,7 @@ terraform-prod/
 | **Product** | User | User | Creator | Viewer |
 | **PeopleOps** | User | User | Viewer | — |
 | **Legal** | User | User | Viewer | — |
-```
+
 ### Tableau Role Design (Production)
 
 The lab assigns all users as `SiteAdministratorCreator` — this hit 
@@ -611,7 +611,7 @@ role matrix.
 ---
 
 ## Official References & Limitation Evidence
-```
+
 | Limitation | Official Reference |
 |---|---|
 | Tailscale SCIM — Enterprise plan required | https://tailscale.com/kb/1249/sso-entra-id-scim |
@@ -620,4 +620,3 @@ role matrix.
 | Tableau SCIM — SAML prerequisite | https://help.tableau.com/current/online/en-us/scim_config_azure_ad.htm |
 | Microsoft Dynamic Groups — cannot hold directory roles | https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership |
 | Entra SCIM provisioning — P1/P2 required | https://learn.microsoft.com/en-us/entra/identity/saas-apps/tableau-online-provisioning-tutorial |
-```
