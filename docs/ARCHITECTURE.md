@@ -76,7 +76,7 @@ two distinct security layers:
   are accepted.
 
 ### Identity Journey
-```
+
 A new TinyCo employee's identity flows through the following stages 
 automatically:
 HR CSV file (incoming/ dropzone)
@@ -100,7 +100,7 @@ SCIM sync (Tableau only, ~40 min)
 Full access granted
 
 ![TinyCo Identity Journey](./tinyco_identity_journey.png)
-```
+
 ---
 
 ## Core Design Decisions
