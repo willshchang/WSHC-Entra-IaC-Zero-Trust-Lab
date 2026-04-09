@@ -161,3 +161,5 @@ searches, no accidental mass deprovisioning risk.
 - `terraform.tfvars` is gitignored — all secrets stay local
 - SSH port 22 is closed to the public internet — VM accessible via Tailscale only
 - All app access enforced via Entra ID group assignments and Conditional Access
+
+  
