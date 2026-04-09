@@ -400,7 +400,7 @@ the app to SAML. Without this, Entra defaults to OIDC.
 ## Per-App RBAC Design
 
 ### Current Lab Approach
-
+```
 The lab uses a single `setproduct` matrix assigning all groups to all 
 apps. This satisfies the project brief's requirement that all team 
 members have access to specified applications.
@@ -416,7 +416,7 @@ terraform-prod/
 ├── rbac-tableau.tf      ← Tableau role assignments
 ├── rbac-elastic.tf      ← Elastic role assignments
 └── rbac-mattermost.tf   ← Mattermost admin assignments
-
+```
 ### Least Privilege Role Matrix (Production)
 
 | Team | Tailscale | Mattermost | Tableau | Elastic |
