@@ -19,7 +19,7 @@ SaaS platforms, and network-level Zero Trust enforcement via Tailscale.
 ---
 
 ## What This Lab Demonstrates
-
+```
 | Capability | Implementation |
 |---|---|
 | **Infrastructure as Code** | Terraform — full Entra ID environment deployable in under 5 minutes |
@@ -30,7 +30,7 @@ SaaS platforms, and network-level Zero Trust enforcement via Tailscale.
 | **SCIM Provisioning** | Automated user lifecycle management via Tableau SCIM |
 | **Security Model** | Conditional Access, MFA enforcement, least privilege RBAC |
 | **Linux Administration** | Azure VM, Docker, Tailscale VPN, SSH hardening |
-
+```
 ---
 
 ## Architecture
@@ -58,7 +58,7 @@ From HR data to app access — fully automated:
 ---
 
 ## Tech Stack
-
+```
 | Layer | Technology |
 |---|---|
 | **Identity** | Microsoft Entra ID (E5) |
@@ -70,10 +70,11 @@ From HR data to app access — fully automated:
 | **Observability** | Elastic Cloud — Kibana (SAML SSO) |
 | **Scripting** | Bash (ETL pipeline, gallery lookup) |
 | **Version Control** | GitHub |
-
+```
 ---
 
 ## Repository Structure
+```
 WSHC-Entra-IaC-Zero-Trust-Lab/
 │
 ├── README.md
@@ -104,7 +105,7 @@ WSHC-Entra-IaC-Zero-Trust-Lab/
 └── user/
 ├── 01-getting-started.md
 └── 02-tailscale-troubleshooting.md
-
+```
 ---
 
 ## Key Design Decisions
@@ -141,7 +142,7 @@ searches, no accidental mass deprovisioning risk.
 ---
 
 ## Documentation Guide
-
+```
 | Goal | Document |
 |---|---|
 | Understand architecture and design decisions | [ARCHITECTURE.md](./docs/ARCHITECTURE.md) |
@@ -150,7 +151,7 @@ searches, no accidental mass deprovisioning risk.
 | Manage users, groups, and applications | [03-provisioning.md](./docs/admin/03-provisioning.md) |
 | End user onboarding guide | [01-getting-started.md](./docs/user/01-getting-started.md) |
 | Tailscale VPN troubleshooting | [02-tailscale-troubleshooting.md](./docs/user/02-tailscale-troubleshooting.md) |
-
+```
 ---
 
 ## Security Notes

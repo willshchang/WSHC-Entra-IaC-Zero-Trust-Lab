@@ -166,20 +166,20 @@ Two CA policies are enforced tenant-wide. Both were deployed via
 Terraform and are version-controlled.
 
 ### Policy 1 — Require MFA for All Users
-
+```
 | Setting | Value |
 |---|---|
 | Scope | All users, all applications, all devices |
 | Action | Require MFA |
 | Exclusion | Security-Exclusion-Emergency group |
 | State | Enabled |
-
+```
 **Rationale:** MFA blocks 99.9% of account compromise attacks 
 according to Microsoft's own data. At a privacy-focused company 
 like TinyCo, protecting user identity is non-negotiable.
 
 ### Policy 2 — Block Legacy Authentication
-
+```
 | Setting | Value |
 |---|---|
 | Scope | All users, legacy protocol clients |
@@ -187,7 +187,7 @@ like TinyCo, protecting user identity is non-negotiable.
 | Action | Block access entirely |
 | Exclusion | Security-Exclusion-Emergency group |
 | State | Enabled |
-
+```
 **Rationale:** Legacy authentication protocols (IMAP, SMTP, POP3, 
 older Office clients) do not support MFA. Attackers actively exploit 
 these protocols to bypass modern security controls. Blocking legacy 

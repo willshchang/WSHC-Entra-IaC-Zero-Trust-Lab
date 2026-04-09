@@ -34,7 +34,7 @@ see [ARCHITECTURE.md](../ARCHITECTURE.md).
 ---
 
 ## Minimum System Requirements
-
+```
 | Tool | Minimum Version | Download |
 |---|---|---|
 | Terraform | 1.5+ | https://developer.hashicorp.com/terraform/install |
@@ -43,11 +43,11 @@ see [ARCHITECTURE.md](../ARCHITECTURE.md).
 | VS Code | Any recent | https://code.visualstudio.com |
 
 **Operating system:** Windows 10/11, macOS 12+, or Ubuntu 20.04+
-
+```
 ---
 
 ## Required Accounts
-
+```
 | Account | Purpose | Cost |
 |---|---|---|
 | Microsoft 365 E5 Trial | Entra ID P2, Conditional Access, ID Governance | Free (30 days) |
@@ -60,7 +60,7 @@ see [ARCHITECTURE.md](../ARCHITECTURE.md).
 > to ensure the environment remains accessible throughout the full 
 > review period. The $18 USD/month cost for 1 active user falls 
 > within the allocated budget.
-
+```
 ---
 
 ## Step 1 — Microsoft 365 & Azure Setup
@@ -296,7 +296,7 @@ azure_role_map = {
 ```
 
 **TinyCo reference values:**
-
+```
 | Item | Value |
 |---|---|
 | Tenant ID | `42a9915e-aa4a-4426-9a86-a04a0dac6222` |
@@ -306,7 +306,7 @@ azure_role_map = {
 > **Security note:** `terraform.tfvars` is listed in `.gitignore` 
 > and will never be pushed to GitHub. It contains sensitive 
 > credentials and must be kept local at all times.
-
+```
 ---
 
 ## Step 6 — Deploy the Environment
@@ -411,7 +411,7 @@ Full setup documented in:
 ---
 
 ## Step 8 — Verify the Environment
-
+```
 | Check | Location | Expected |
 |---|---|---|
 | Users | Entra → Users | 91 users (89 employees + admin + break-glass) |
@@ -424,11 +424,11 @@ Full setup documented in:
 | Mattermost | Tailscale URL | Login page with Entra ID button |
 | Tableau | SSO URL | Login redirects to Microsoft |
 | Elastic | Kibana URL | Login with Microsoft button |
-
+```
 ---
 
 ## Terraform File Reference
-
+```
 | File | Purpose |
 |---|---|
 | `providers.tf` | Azure and Entra provider versions |
@@ -443,11 +443,11 @@ Full setup documented in:
 | `tableau.tf` | Tableau Cloud SAML app registration |
 | `elastic.tf` | Elastic Cloud SAML app registration |
 | `apps-stub.tf` | 10 stub registrations for remaining apps |
-
+```
 ---
 
 ## Important Reference IDs
-
+```
 | Item | Value |
 |---|---|
 | Tenant ID | `42a9915e-aa4a-4426-9a86-a04a0dac6222` |
@@ -459,3 +459,4 @@ Full setup documented in:
 | VM Tailscale IP | `100.83.194.101` |
 | Tailscale Hostname | `tinyco-vm.hair-squeaker.ts.net` |
 | Break-glass Password | Delivered via submission notes |
+```

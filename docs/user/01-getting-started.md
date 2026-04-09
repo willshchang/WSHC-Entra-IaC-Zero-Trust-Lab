@@ -19,14 +19,14 @@ you just need to activate it and connect to your apps.
 - A smartphone for MFA (Multi-Factor Authentication) setup
 
 **Your apps:**
-
+```
 | App | Purpose | Access |
 |---|---|---|
 | Tailscale | Secure VPN — required for internal tools | tailscale.com |
 | Mattermost | Team chat | Via Tailscale only |
 | Tableau | Data & analytics | sso.online.tableau.com |
 | Elastic | Observability & logs | Via Elastic Cloud URL |
-
+```
 ---
 
 ## Step 1 — Sign In and Set Up MFA
@@ -72,7 +72,7 @@ to Tailscale to access internal tools like Mattermost.
 ### Install Tailscale
 
 Download for your device:
-
+```
 | Platform | Download |
 |---|---|
 | Windows | https://tailscale.com/download/windows |
@@ -80,7 +80,7 @@ Download for your device:
 | iOS | App Store → search **Tailscale** |
 | Android | Play Store → search **Tailscale** |
 | Linux | https://tailscale.com/download/linux |
-
+```
 ### Connect to TinyCo Network
 
 1. Open Tailscale after installing
@@ -153,7 +153,7 @@ and log analysis. Access is provided to relevant teams only.
 ---
 
 ## Your TinyCo Identity at a Glance
-
+```
 | Item | Value |
 |---|---|
 | Email | `firstname.lastname@TinyCoDDG.onmicrosoft.com` |
@@ -165,7 +165,7 @@ and log analysis. Access is provided to relevant teams only.
 > **MyApps portal** — bookmark `https://myapps.microsoft.com`. 
 > This shows all your TinyCo applications in one place and 
 > provides a quick-launch link for each one.
-
+```
 ---
 
 ## Need Help?
