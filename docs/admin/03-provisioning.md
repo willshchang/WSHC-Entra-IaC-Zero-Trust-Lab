@@ -72,14 +72,14 @@ For each operation, two methods are documented:
   to keep the codebase in sync.
 
 ### Provisioning Model Per Application
-```
+
 | Application | Provisioning Method | Notes |
 |---|---|---|
 | **Tailscale** | JIT via OIDC SSO | Account created on first login |
 | **Mattermost** | JIT via SAML SSO | Account created on first login |
 | **Tableau** | SCIM + JIT via SAML | Account pre-created by SCIM (~40 min after group assignment) |
 | **Elastic** | JIT via SAML SSO | Account created on first login |
-```
+
 > **SCIM availability:** SCIM auto-provisioning is only available 
 > for Tableau in this environment. Tailscale SCIM requires Enterprise 
 > plan, Mattermost does not support SCIM, and Elastic SCIM requires 
