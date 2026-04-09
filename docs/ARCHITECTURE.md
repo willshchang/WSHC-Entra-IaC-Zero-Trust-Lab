@@ -1,8 +1,8 @@
 # TinyCo Entra ID — Architecture & Technical Design
 
 **Document Type:** Technical Architecture  
-**Author:** Will Chang, Sr. IT Operations Engineer
-**Audience:** Reviewer
+**Author:** Will Chang, Sr. IT Operations Engineer  
+**Audience:** Reviewer  
 **Last Updated:** April 2026  
 **Repository:** https://github.com/willshchang/WSHC-Entra-IaC-Zero-Trust-Lab
 
