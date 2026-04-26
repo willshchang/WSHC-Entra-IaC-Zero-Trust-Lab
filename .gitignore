@@ -54,4 +54,5 @@ temp/
 *.cer
 
 # Submission notes — contains credentials, never commit
-docs/SUBMISSION-NOTES.mdLab Quick Reference.md
+docs/SUBMISSION-NOTES.md
+Lab Quick Reference.md
