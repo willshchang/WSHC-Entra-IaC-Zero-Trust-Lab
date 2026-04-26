@@ -12,23 +12,24 @@
 ## Overview
 
 This document covers the complete setup, verification, and 
-troubleshooting process for Tailscale subnet routers in a 
-site-to-site topology. It is written as a learning journal — 
-including commands that didn't work, why they failed, and 
-what the correct approach was.
+troubleshooting process for Tailscale subnet routers. It 
+combines a general platform-agnostic troubleshooting reference 
+with a lab-specific learning journal — including commands that 
+didn't work, why they failed, and what the correct approach was.
 
 **Lab topology:**
 - **Site A (Cloud):** Azure VM (`tinyco-vm`) — Ubuntu 24.04, 
   Tailscale IP `100.93.4.6`
-- **Site B (Home LAN):** Apple TV (`iwilltvlivingroom`) — 
-  subnet router advertising `192.168.1.0/24`, 
-  Tailscale IP `100.109.140.74`
+- **Site B (Home LAN):** Two Apple TVs — HA subnet routers 
+  advertising `192.168.1.0/24`
+  - Primary: `iwilltvliving` — ethernet, `100.109.140.74`
+  - Secondary: `iwilltvmaster` — WiFi, `100.122.120.115`
 - **Home network:** Telus fibre modem (`192.168.1.254`) → 
   ASUS router in AP mode (`192.168.1.59`)
 
 **Goal:** Azure VM (Site A) reaches non-Tailscale devices on 
 the home LAN (`192.168.1.0/24`) through the Apple TV subnet 
-router (Site B).
+router (Site B) with automatic HA failover.
 
 ---
 
@@ -39,17 +40,23 @@ between your Tailnet and a physical subnet — allowing Tailscale
 devices to reach non-Tailscale devices on that subnet without 
 installing Tailscale on every device.
 
-**Key distinction:**
-- **Exit node** — routes all outbound internet traffic through 
-  a device (like a VPN)
-- **Subnet router** — routes traffic to specific private subnets 
-  only, does not affect internet traffic
+**Key distinctions:**
+
+| Feature | Subnet Router | Exit Node |
+|---|---|---|
+| **Purpose** | Access specific private subnets | Route all internet traffic |
+| **Internet traffic** | Not affected | Routed through exit node |
+| **Use case** | Office LAN, cloud VPC, legacy devices | Privacy, geo-routing |
+| **Devices covered** | Non-Tailscale LAN devices | All internet traffic |
 
 **Why it matters:**
 Devices like printers, routers, modems, cameras, and legacy 
 systems can't run Tailscale. A subnet router extends Tailscale's 
 Zero Trust security model to cover these devices without 
 requiring client installation.
+
+**Official reference:**
+https://tailscale.com/docs/features/subnet-routers
 
 ---
 
@@ -61,33 +68,34 @@ topology:
 ```bash
 ipconfig          # Windows
 ifconfig          # macOS/Linux
+ip addr show      # Linux (modern)
 ```
 
 **Key terms:**
 
 | Term | Definition |
 |---|---|
-| **Default Gateway** | The device that routes traffic from your LAN to the internet — usually your router or modem |
-| **Subnet** | A range of IP addresses on the same local network |
-| **AP Mode** | Access Point mode — device provides WiFi only, does not route traffic |
+| **Default Gateway** | Device routing traffic from LAN to internet — usually router or modem |
+| **Subnet** | Range of IP addresses on the same local network |
+| **AP Mode** | Access Point mode — provides WiFi only, does not route traffic |
 | **SNAT** | Source NAT — subnet router rewrites source IP so return traffic routes correctly |
+| **IP Forwarding** | Kernel setting allowing a device to forward packets between interfaces |
+| **Double NAT** | Two NAT layers (e.g. modem + router) — blocks WireGuard direct P2P connections |
 
 **Lab network breakdown:**
 - `192.168.1.254` — Telus fibre modem (actual default gateway)
 - `192.168.1.59` — ASUS router in AP mode (WiFi only, not routing)
 - `192.168.1.157` — Windows PC (Tailscale device, direct Tailnet member)
-- `192.168.1.0/24` — full home subnet advertised by Apple TV
+- `192.168.1.0/24` — full home subnet advertised by Apple TVs
 
 > **Note:** When the ASUS router is in AP mode, the modem 
-> (`192.168.1.254`) is the real gateway — not the router's 
-> typical `192.168.1.1` address. Always verify with `ipconfig` 
-> before assuming gateway IP.
+> (`192.168.1.254`) is the real gateway — not the typical 
+> `192.168.1.1`. Always verify with `ipconfig` before 
+> assuming gateway IP.
 
 ---
 
-## Setup — Apple TV as Subnet Router
-
-### tvOS Configuration
+## Setup — Apple TV (tvOS) as Subnet Router
 
 Apple TV (tvOS) is one of the simplest subnet router platforms — 
 no CLI required, no IP forwarding configuration needed. tvOS 
@@ -98,7 +106,10 @@ handles this automatically.
 3. Go to **Settings** in the Tailscale app
 4. Enable **Subnet Router**
 5. Enable **Allow Local Network Access**
-6. The Apple TV will advertise its local subnet automatically
+6. The Apple TV advertises its local subnet automatically
+
+**Official tvOS reference:**
+https://tailscale.com/docs/features/subnet-routers?tab=tvos
 
 ### Admin Console — Approve the Route
 
@@ -111,14 +122,41 @@ After the Apple TV advertises its subnet:
 5. Click **Save**
 
 > **UI note:** The Tailscale admin console no longer shows 
-> "Approved/Advertised" labels explicitly. A checkmark ✅ next 
-> to the subnet means it is approved and active.
+> "Approved/Advertised" labels explicitly. A checkmark ✅ 
+> next to the subnet means it is approved and active.
+
+---
+
+## Setup — Linux as Subnet Router
+
+Linux requires two explicit steps that other platforms 
+handle automatically.
+
+### Step 1 — Enable IP Forwarding
+
+IP forwarding allows the Linux kernel to forward packets 
+between interfaces — essential for a subnet router.
+
+```bash
+echo 'net.ipv4.ip_forward = 1' | sudo tee -a /etc/sysctl.d/99-tailscale.conf
+echo 'net.ipv6.conf.all.forwarding = 1' | sudo tee -a /etc/sysctl.d/99-tailscale.conf
+sudo sysctl -p /etc/sysctl.d/99-tailscale.conf
+```
+
+### Step 2 — Advertise Subnet Routes
+
+```bash
+sudo tailscale set --advertise-routes=192.168.1.0/24
+```
+
+**Official Linux reference:**
+https://tailscale.com/docs/features/subnet-routers?tab=linux
 
 ---
 
 ## Setup — Linux Client Accepting Subnet Routes
 
-**This is the most common missed step on Linux.**
+**This is the most commonly missed step on Linux.**
 
 Windows, macOS, iOS, and tvOS automatically accept advertised 
 subnet routes. Linux does not — it requires explicit opt-in:
@@ -128,139 +166,54 @@ sudo tailscale set --accept-routes
 ```
 
 **Why Linux requires this:**
-It is a deliberate security measure. A rogue subnet router on 
-your Tailnet cannot automatically inject routes into your Linux 
-device's routing table without your explicit consent.
+It is a deliberate security measure. A rogue subnet router 
+cannot automatically inject routes into a Linux device's 
+routing table without explicit consent.
 
----
-
-## Correct Diagnostic Toolkit
-
-### The Wrong Tool — `ip route show`
-
-During initial troubleshooting, `ip route show` was used to 
-check if the subnet route was present:
-
+**Verify:**
 ```bash
-ip route show
+tailscale status --self
 ```
 
-**This was the wrong tool for this problem.**
-
-`ip route show` displays the Linux kernel routing table — it 
-shows routes managed by the OS network stack. Tailscale manages 
-subnet routes in its own internal routing layer, which intercepts 
-packets before they reach the kernel.
-
-`192.168.1.0/24` will never appear in `ip route show` even when 
-Tailscale subnet routing is working perfectly.
-
-**When `ip route show` IS useful:**
-- Diagnosing kernel-level routing issues
-- Verifying static routes
-- Checking default gateway configuration
-- Non-Tailscale network troubleshooting
+Look for `accept-routes=true` in the output.
 
 ---
 
-### The Right Tools — Tailscale Layer Diagnostics
+## Universal Diagnostic Commands
 
-#### 1. Check Tailscale device status
+Run these first on any subnet router issue — in this order:
 
 ```bash
+# 1. Check device and connection status
 tailscale status
-```
 
-Shows all Tailnet devices, their IPs, OS, and connection type 
-(`direct` or `relay`). Does **not** show subnet routes in the 
-simple output.
-
-#### 2. Check active subnet routes (correct command)
-
-```bash
-tailscale status --json | python3 -m json.tool | grep -A5 "PrimaryRoutes"
-```
-
-**Command breakdown:**
-- `tailscale status --json` — outputs full status as raw JSON
-- `python3 -m json.tool` — pretty-prints JSON for readability
-- `grep -A5 "PrimaryRoutes"` — finds `PrimaryRoutes` and shows 
-  5 lines after it (`-A` = after)
-
-**What to look for:**
-```json
-"PrimaryRoutes": [
-    "192.168.1.0/24"
-],
-```
-
-If `PrimaryRoutes` contains your subnet → Tailscale has an 
-active approved route via that device.
-
-**Alternative — cleaner output:**
-```bash
+# 2. Check active subnet routes — correct tool for Tailscale
 tailscale status --json | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
 for peer in data.get('Peer',{}).values():
     routes=peer.get('PrimaryRoutes',[])
-    if routes:
-        print(peer['HostName'], routes)
+    advertised=peer.get('AdvertisedRoutes',[])
+    if routes or advertised:
+        print(peer['HostName'])
+        print('  Primary:', routes)
+        print('  Advertised:', advertised)
 "
-```
 
-#### 3. Check if Linux client is accepting routes
-
-```bash
+# 3. Check this device's Tailscale config flags
 tailscale status --self
+
+# 4. Check network environment (NAT type, DERP latency)
+tailscale netcheck
+
+# 5. Ping subnet router Tailscale IP first
+ping -c 4 
+
+# 6. Then ping a device behind the subnet router
+ping -c 4 
 ```
 
-Look for `--accept-routes` in the flags. If absent, run:
-```bash
-sudo tailscale set --accept-routes
-```
-
-#### 4. Check ACL policy
-
-If routing is confirmed working but traffic is still blocked, 
-the issue is the ACL policy. Open:
-`login.tailscale.com/admin/acls`
-
-Verify there is a rule allowing traffic from your source device 
-to the subnet destination.
-
----
-
-## Correct Troubleshooting Flow+
-ping fails to subnet device
-↓
-tailscale status
-→ Is the subnet router device connected?
-→ Is it showing idle/active (not offline)?
-↓
-tailscale status --json | grep PrimaryRoutes
-→ Is the subnet showing under PrimaryRoutes?
-→ If not → check admin console subnet approval ✅
-↓
-sudo tailscale set --accept-routes  (Linux only)
-→ Did the Linux client accept routes?
-↓
-ping subnet router Tailscale IP first
-→ Can you reach the subnet router device itself?
-↓
-ping device on home subnet
-→ 192.168.1.254 (modem), 192.168.1.59 (ASUS AP)
-↓
-If still failing → check ACL policy
-→ Is traffic from VM to 192.168.1.0/24 permitted?
-
----
-
-## Understanding `ping -c 4`
-
-```bash
-ping -c 4 192.168.1.254
-```
+### Understanding `ping -c 4`
 
 - `-c` = **count** — number of packets to send
 - `4` = send exactly 4 packets then stop
@@ -270,62 +223,253 @@ Using `-c 4` is standard for quick connectivity verification.
 
 ---
 
-## DERP vs Direct Connection
+## Identify the Failure Layer First
 
-When checking `tailscale status`, connection type appears next 
-to each peer:
-iwillwindows  active; direct 108.173.x.x:41641
-iwilltvlivingroom  idle; relay: sea
+Before changing any configuration, determine which layer 
+the issue lives in:
 
-**Direct connection** — Tailscale established a peer-to-peer 
-WireGuard tunnel directly between devices. Best performance.
+| Layer | Tool | What it covers |
+|---|---|---|
+| **Tailscale** | `tailscale status`, admin console | Routes, ACL, device connectivity |
+| **Network/OS** | `ip route`, `traceroute`, firewall | Kernel routing, NAT, IP forwarding |
+| **Cloud** | NSG, security groups | Azure/AWS/GCP traffic rules |
 
-**DERP relay** — Tailscale cannot establish a direct connection 
-and routes traffic through a relay server (in this case Seattle). 
-Traffic remains end-to-end encrypted — DERP only sees encrypted 
-packets, not content.
+**Always start at the Tailscale layer.** Most subnet issues 
+are configuration, not network.
 
-**Why Apple TV uses DERP in this lab:**
-The home network uses double NAT — Telus modem + ASUS router 
-(even in AP mode) creates NAT layers that block WireGuard's UDP 
-hole-punching. DERP handles this automatically.
+### The Wrong Tool — `ip route show`
 
-**DERP = Detoured Encrypted Routing Protocol** — Tailscale's 
-relay network. Not a fallback or failure — a deliberate design 
-for networks where direct P2P isn't possible.
+```bash
+ip route show
+```
 
-**Impact on latency:**
-- First ping via DERP: `300ms` (DERP relay + route negotiation)
-- Subsequent pings: `74ms` (Tailscale optimised to direct or 
-  cached DERP path)
+**This is the wrong tool for Tailscale subnet issues.**
 
-**Fix for direct connection (optional):**
-Enable UDP port forwarding on the Telus modem for port `41641` 
-pointing to the Apple TV's LAN IP. However this defeats 
-Tailscale's core value proposition — zero port forwarding 
-required. DERP at `74ms` is acceptable for most use cases.
+`ip route show` displays the Linux kernel routing table. 
+Tailscale manages subnet routes in its own internal routing 
+layer — intercepting packets before they reach the kernel. 
+A subnet like `192.168.1.0/24` will never appear in 
+`ip route show` even when Tailscale subnet routing works 
+perfectly.
+
+**When `ip route show` IS useful:**
+- Diagnosing kernel-level routing issues
+- Verifying static routes
+- Checking default gateway configuration
+- Asymmetric routing issues (see Issue 6 below)
 
 ---
 
-## High Availability — Multiple Subnet Routers
+## Correct Troubleshooting Flow
+ping fails to subnet device
+↓
+tailscale status
+→ Is the subnet router connected? (not offline or -)
+↓
+tailscale status --json | grep PrimaryRoutes
+→ Is the subnet showing under PrimaryRoutes?
+→ If not → check admin console subnet approval ✅
+↓
+sudo tailscale set --accept-routes  (Linux clients only)
+→ Did the Linux client accept routes?
+↓
+ping subnet router Tailscale IP first
+→ Can you reach the subnet router device itself?
+↓
+ping device on subnet
+→ 192.168.1.254 (modem), 192.168.1.59 (AP)
+↓
+If still failing → check ACL policy
+→ Is traffic from source to 192.168.1.0/24 permitted?
+↓
+If cloud environment → check security groups/NSG
+→ Is inbound/outbound subnet traffic allowed?
 
-Tailscale supports multiple devices advertising the same subnet 
-for redundancy. This is called **HA (High Availability) subnet 
-routing**.
+---
 
-**How it works:**
-- Two devices both advertise `192.168.1.0/24`
-- Tailscale selects one as the `PrimaryRoutes` router
-- If the primary goes offline → Tailscale automatically fails 
-  over to the secondary
-- Clients require no configuration changes
+## Common Issues
 
-**Planned lab upgrade:**
-A second Apple TV (`iwilltvlivingroom2`) will be configured as 
-a secondary subnet router advertising the same `192.168.1.0/24` 
-subnet — demonstrating HA failover in a real home lab environment.
+### Issue 1 — Linux client cannot reach subnet devices
 
-**Verify HA is working:**
+**Symptom:** Ping to subnet devices fails from Linux, even 
+though subnet router is connected and route is approved.
+
+**Cause:** Linux does not automatically accept subnet routes.
+
+**Fix:**
+```bash
+sudo tailscale set --accept-routes
+```
+
+---
+
+### Issue 2 — Route not appearing in PrimaryRoutes
+
+**Symptom:** `tailscale status --json` shows empty 
+`PrimaryRoutes` for subnet router.
+
+**Cause:** Route advertised but not approved in admin console.
+
+**Fix:**
+Admin console → Machines → find subnet router → 
+Subnets → check `192.168.1.0/24` ✅ → Save
+
+---
+
+### Issue 3 — Can reach subnet router, not devices behind it
+
+**Symptom:** Ping to subnet router's Tailscale IP succeeds. 
+Ping to `192.168.1.x` devices fails.
+
+**Cause A — Linux IP forwarding not enabled:**
+```bash
+# Check current status
+sysctl net.ipv4.ip_forward
+
+# Fix
+echo 'net.ipv4.ip_forward = 1' | sudo tee -a /etc/sysctl.d/99-tailscale.conf
+sudo sysctl -p /etc/sysctl.d/99-tailscale.conf
+```
+
+**Cause B — ACL blocking traffic:**
+Check `login.tailscale.com/admin/acls` — ensure grant exists:
+```json
+{
+    "src": ["your-user-or-device"],
+    "dst": ["192.168.1.0/24"],
+    "ip":  ["*"]
+}
+```
+
+---
+
+### Issue 4 — Cloud subnet router not forwarding traffic
+
+**Symptom:** Subnet router on Azure, AWS, or GCP — devices 
+behind it unreachable despite correct Tailscale config.
+
+**Cause:** Cloud security groups or NSGs blocking forwarded 
+traffic.
+
+**Fix — Azure NSG:**
+- Allow inbound traffic on the subnet CIDR
+- Allow outbound traffic to the subnet CIDR
+- Test by temporarily allowing all internal traffic
+
+**Fix — AWS Security Groups:**
+- Allow all traffic on the internal subnet for testing
+- Narrow down rules after confirming connectivity
+
+> **Official guidance:**
+> https://tailscale.com/docs/reference/troubleshooting/cloud/subnet-connectivity
+
+---
+
+### Issue 5 — Subnet router was working, now stopped
+
+**Symptom:** Subnet routing was working, then stopped without 
+any obvious changes.
+
+| Cause | Check | Fix |
+|---|---|---|
+| Key expiry | Admin console → device key status | Disable key expiry |
+| IP forwarding reset on reboot | `sysctl net.ipv4.ip_forward` | Make sysctl persistent |
+| ACL policy changed | Admin console → ACLs | Review recent changes |
+| Device IP changed | `tailscale status` | Update any hardcoded IPs |
+
+> **Key expiry is critical for subnet routers.** When a 
+> subnet router's key expires, the routes remain configured 
+> on client devices but become unreachable. Always disable 
+> key expiry on subnet router devices.
+>
+> Admin console → Machines → device → three dots → 
+> Disable key expiry
+
+**Official reference:**
+https://tailscale.com/docs/features/access-control/key-expiry
+
+---
+
+### Issue 6 — Asymmetric routing on Linux
+
+**Symptom:** Devices on the same LAN as a Linux subnet 
+router cannot reach each other reliably. Ping requests 
+arrive but replies don't return.
+
+**Diagnostic:**
+```bash
+# Run tcpdump on the affected device
+sudo tcpdump -i any icmp and host <target-ip>
+```
+
+Look for: request arriving on `eth0` but reply leaving 
+on `tailscale0` — that's asymmetric routing.
+
+**Why this happens:**
+When a Linux device advertises a subnet it's also connected 
+to, Tailscale adds that subnet to routing table 52. Return 
+traffic from LAN devices gets routed through Tailscale 
+instead of directly across the LAN.
+
+**Fix — add a policy routing rule:**
+```bash
+sudo ip rule add from 192.168.1.0/24 to 192.168.1.0/24 \
+    lookup main priority 99
+```
+
+**Make persistent:**
+```bash
+cat > /etc/network/if-up.d/local-routing << 'EOF'
+#!/bin/bash
+ip rule add from 192.168.1.0/24 to 192.168.1.0/24 \
+    lookup main priority 99 2>/dev/null || true
+EOF
+chmod +x /etc/network/if-up.d/local-routing
+```
+
+---
+
+### Issue 7 — Overlapping subnet routes — traffic black hole
+
+**Symptom:** Two subnet routers advertise overlapping routes 
+with different prefix lengths (e.g. `10.0.0.0/16` and 
+`10.0.0.0/24`). More-specific router goes offline — traffic 
+drops entirely even though less-specific router is available.
+
+**Cause:** Tailscale uses longest prefix matching. When the 
+more-specific router goes offline, Tailscale does not 
+automatically fall back to the less-specific route — it 
+drops traffic instead.
+
+**Fix:** Configure all subnet routers advertising a broader 
+prefix to also advertise the more-specific prefix:
+Before (broken):
+Router A: 10.0.0.0/16
+Router B: 10.0.0.0/24
+After (HA-safe):
+Router A: 10.0.0.0/16 AND 10.0.0.0/24
+Router B: 10.0.0.0/24
+
+Both routers are now candidates for `/24` traffic — 
+failover works correctly.
+
+**Official reference:**
+https://tailscale.com/docs/reference/troubleshooting/network-configuration/overlapping-subnet-route-failover
+
+---
+
+### Issue 8 — HA failover not working
+
+**Symptom:** Primary subnet router goes offline but 
+secondary does not take over.
+
+**Checklist:**
+1. Does secondary advertise the **exact same** subnet? 
+   (`192.168.1.0/24` ≠ `192.168.1.0/25`)
+2. Is secondary route approved in admin console? ✅
+3. Is `--accept-routes` enabled on client devices? (Linux)
+
+**Verify both routers:**
 ```bash
 tailscale status --json | python3 -c "
 import json,sys
@@ -340,55 +484,138 @@ for peer in data.get('Peer',{}).values():
 "
 ```
 
-## HA Failover — Live Test Results
+**Expected healthy HA output:**
+iwilltvliving
+Primary: ['192.168.1.0/24']
+Advertised: []
+iwilltvmaster
+Primary: []
+Advertised: ['192.168.1.0/24']
 
-### Test Procedure
+The `-` in `tailscale status` for the standby router is 
+correct — it means standby, not broken.
 
-To verify HA failover works correctly:
+> **Failover timing:** Tailscale fails over to the next 
+> subnet router approximately 15 seconds after the primary 
+> goes offline.
 
-1. Confirm primary subnet router (`iwilltvliving`) is active
-2. In admin console → find `iwilltvliving` → **Edit route settings** 
-   → uncheck `192.168.1.0/24` → Save
-3. Wait 5 seconds
-4. From Azure VM, ping a device on the home subnet:
+**Official HA reference:**
+https://tailscale.com/docs/how-to/set-up-high-availability
+
+---
+
+### Issue 9 — High latency via subnet router
+
+**Symptom:** High latency, especially on first packet.
+
+**Diagnosis:**
 ```bash
-   ping -c 4 192.168.1.254
+tailscale status
+# Look for: relay: sea (DERP) vs direct
 ```
-5. Restore HA — re-check `192.168.1.0/24` on `iwilltvliving`
 
-### Results
+| Connection | Latency | Cause |
+|---|---|---|
+| `direct` | 5–30ms | P2P WireGuard tunnel |
+| `relay: sea` | 50–300ms | DERP relay (NAT traversal) |
+
+**First packet spike is normal:**
+The first packet via DERP initiates path negotiation. 
+Subsequent packets drop to steady-state latency once 
+the path is cached.
+
+**Improve direct connection:**
+Enable UDP port `41641` forwarding on your router pointing 
+to the subnet router's LAN IP.
+
+> DERP relay is not a failure — it is Tailscale's deliberate 
+> design for networks where direct P2P is not possible. 
+> Traffic remains end-to-end encrypted regardless.
+
+**Official DERP reference:**
+https://tailscale.com/blog/how-tailscale-works
+
+---
+
+### Issue 10 — Subnet accessible from some devices but not others
+
+**Symptom:** One device reaches the subnet, another cannot — 
+same tailnet.
+
+**Cause A:** Different `accept-routes` settings per device.
+```bash
+# On the failing device (Linux)
+tailscale status --self | grep accept-routes
+```
+
+**Cause B:** ACL policy restricts by user/device identity.
+
+Admin console → **Access Controls** → use **Test access** 
+to simulate access from the failing device's identity to 
+the subnet destination.
+
+---
+
+## DERP vs Direct Connection
+tailscale status output:
+iwillwindows       active; direct 108.173.x.x:41641
+iwilltvliving      idle; relay: sea
+
+**Direct connection** — P2P WireGuard tunnel. Best performance.
+
+**DERP relay** — Tailscale routes through a relay server when 
+direct P2P is not possible. Traffic is still end-to-end 
+encrypted — DERP only sees encrypted packets, never content.
+
+**DERP = Detoured Encrypted Routing Protocol**
+
+**Why Apple TV uses DERP in this lab:**
+Double NAT (Telus modem + ASUS AP mode) blocks WireGuard's 
+UDP hole-punching. DERP handles this automatically with no 
+configuration required.
+
+**Impact on latency:**
+- First ping: `~300ms` — DERP relay negotiation
+- Subsequent pings: `~74ms` — path optimised and cached
+
+**Official DERP reference:**
+https://tailscale.com/blog/how-tailscale-works
+
+---
+
+## High Availability — Multiple Subnet Routers
+
+Tailscale supports multiple devices advertising the same 
+subnet for redundancy.
+
+**How it works:**
+- Two devices both advertise `192.168.1.0/24`
+- Tailscale selects one as primary (`PrimaryRoutes`)
+- If primary goes offline → automatic failover to secondary
+- Clients require zero configuration changes
+
+**Lab HA test — verified results:**
 
 | Test | Result |
 |---|---|
-| Primary subnet router disabled | `iwilltvmaster` (bedroom) automatically became primary |
-| Ping to `192.168.1.254` after failover | ✅ Success — 4/4 packets received |
-| Connection type | DERP relay Seattle (expected — WiFi + NAT on bedroom Apple TV) |
+| Primary subnet router disabled | `iwilltvmaster` automatically became primary |
+| Ping to `192.168.1.254` after failover | ✅ 4/4 packets received |
+| Connection type | DERP relay Seattle (WiFi + NAT on bedroom Apple TV) |
 | Client reconfiguration needed | ❌ None — fully automatic |
 | Time to failover | ~5 seconds |
 
-### Key Observations
+**Perform HA failover test:**
+1. Admin console → `iwilltvliving` → Edit route settings → 
+   uncheck `192.168.1.0/24` → Save
+2. Wait 5 seconds
+3. From Azure VM: `ping -c 4 192.168.1.254`
+4. Restore: re-check `192.168.1.0/24` on `iwilltvliving`
 
-**The `-` in `tailscale status` means standby — not broken.**
-When two devices advertise the same subnet, Tailscale picks one 
-as primary. The other shows `-` in `tailscale status` — this is 
-correct standby behaviour, not an error.
+**Production framing:**
 
-**Living room Apple TV wins primary consistently** because it is 
-connected via ethernet directly to the Telus modem — lower 
-latency path than bedroom Apple TV on WiFi.
-
-**Failover is zero-touch for clients** — no commands needed on 
-the Azure VM or any other Tailnet device. Tailscale handles 
-rerouting automatically.
-
-### Production Framing
-
-In this lab, both Apple TVs are on the same physical subnet 
-`192.168.1.0/24` — this demonstrates **HA failover** rather 
-than true site-to-site routing.
-
-In production, each subnet router would sit on a different 
-physical network:
+In this lab, both Apple TVs share the same physical subnet — 
+demonstrating HA failover. In production, each subnet router 
+would sit on a different physical network:
 
 | Device | Subnet | Represents |
 |---|---|---|
@@ -396,11 +623,58 @@ physical network:
 | Branch subnet router | `10.10.0.0/24` | Branch office LAN |
 | Cloud subnet router | `10.0.0.0/24` | Azure VPC |
 
-Each site advertises its own unique subnet — Tailscale devices 
-reach any site transparently through the correct subnet router.
-
 **Official HA reference:**
 https://tailscale.com/docs/how-to/set-up-high-availability
+
+---
+
+## Diagnostic Command Reference
+
+| Command | What it shows | When to use |
+|---|---|---|
+| `tailscale status` | Device list, connection type, online status | First check always |
+| `tailscale status --json \| grep PrimaryRoutes` | Active subnet routes | Verify route is active |
+| `tailscale status --self` | This device's config flags | Check accept-routes |
+| `tailscale ping <host>` | Latency + path type | Diagnose connection quality |
+| `tailscale netcheck` | NAT type, DERP latency per region | Network environment check |
+| `ping -c 4 <ip>` | Basic end-to-end connectivity | Always step before escalating |
+| `traceroute <ip>` | Hop-by-hop path | Where traffic is dropping |
+| `ip route show` | Linux kernel routing table | Non-Tailscale routing only |
+| `sysctl net.ipv4.ip_forward` | IP forwarding status | Linux subnet router check |
+| `tailscale bugreport` | Compressed log bundle for support | Escalating to Tailscale |
+
+---
+
+## `tailscale netcheck` — Underused but Powerful
+
+```bash
+tailscale netcheck
+```
+
+Shows:
+- **NAT type** — easy/hard/symmetric — affects direct 
+  connection probability
+- **DERP relay latency** per region — shows closest relay
+- **UDP availability** — if blocked, only DERP works
+- **IPv6 availability**
+
+Run this first when diagnosing DERP vs direct issues.
+
+---
+
+## Generate a Bug Report
+
+When escalating to Tailscale support:
+
+```bash
+tailscale bugreport
+```
+
+Generates a compressed log bundle with Tailscale state, 
+logs, and network configuration. Attach to support tickets.
+
+**Official reference:**
+https://tailscale.com/docs/account/bug-report
 
 ---
 
@@ -409,12 +683,16 @@ https://tailscale.com/docs/how-to/set-up-high-availability
 | Symptom | Likely Cause | Fix |
 |---|---|---|
 | Ping fails, subnet router connected | Linux not accepting routes | `sudo tailscale set --accept-routes` |
-| Subnet not in PrimaryRoutes | Route not approved in admin console | Admin console → Machines → approve subnet ✅ |
-| Ping fails after accept-routes | ACL blocking traffic | Check ACL policy, add permit rule for subnet |
-| Subnet router shows offline | Device powered off or Tailscale not running | Check device, restart Tailscale |
-| High latency first ping | DERP relay in use | Expected — Tailscale optimises after first packet |
-| Direct connection not establishing | Double NAT / UDP blocked | DERP handles automatically — no action needed |
-| Route present but traffic dropped | SNAT issue or firewall on target device | Check target device firewall, verify SNAT enabled |
+| Subnet not in PrimaryRoutes | Route not approved in admin console | Admin console → approve ✅ |
+| Ping fails after accept-routes | ACL blocking traffic | Add grant in ACL policy |
+| Can reach router, not subnet devices | IP forwarding disabled (Linux) | Enable ip_forward via sysctl |
+| Cloud subnet not reachable | Security group/NSG too restrictive | Allow subnet traffic in cloud firewall |
+| Subnet router stopped working | Key expiry | Disable key expiry on router device |
+| High latency first ping | DERP relay negotiating | Expected — subsequent pings normalise |
+| Direct connection failing | Double NAT / UDP blocked | DERP handles automatically |
+| LAN devices unreachable from same subnet | Asymmetric routing | Add policy routing rule |
+| HA failover not working | Different subnet prefix advertised | Ensure exact same subnet on both routers |
+| Overlapping routes drop traffic | Black hole on more-specific prefix | Advertise specific prefix on all routers |
 
 ---
 
@@ -426,24 +704,27 @@ Always start with `tailscale status --json` for Tailscale issues.
 
 **2. Linux requires explicit route acceptance**
 Windows, macOS, iOS, and tvOS accept subnet routes automatically. 
-Linux always requires `--accept-routes`. This is intentional 
-security design, not a bug.
+Linux always requires `--accept-routes`. Intentional security 
+design, not a bug.
 
 **3. Admin console approval is required**
-Advertising a subnet on the device is not enough — the route 
-must also be approved in the admin console. The checkmark ✅ 
-confirms approval.
+Advertising a subnet is not enough — the route must also be 
+approved in the admin console. Checkmark ✅ = approved.
 
 **4. DERP is not a failure**
-Seeing `relay: sea` in `tailscale status` is not an error. 
-DERP provides connectivity where direct P2P isn't possible, 
-with full end-to-end encryption maintained.
+`relay: sea` in `tailscale status` is not an error. DERP 
+provides connectivity where direct P2P isn't possible, with 
+full end-to-end encryption maintained.
 
 **5. Identify the network layer before troubleshooting**
 > "Is this a Tailscale layer issue or a network layer issue?"
 
 Tailscale layer → `tailscale status`, admin console, ACL policy  
 Network layer → `ip route`, `traceroute`, `ping`, firewall rules
+
+**6. Always disable key expiry on subnet routers**
+Key expiry causes silent failures — routes remain configured 
+but become unreachable. Disable it on all infrastructure devices.
 
 ---
 
@@ -452,8 +733,13 @@ Network layer → `ip route`, `traceroute`, `ping`, firewall rules
 | Topic | URL |
 |---|---|
 | Subnet routers | https://tailscale.com/docs/features/subnet-routers |
-| HA subnet routers | https://tailscale.com/docs/how-to/set-up-high-availability |
+| HA subnet routing | https://tailscale.com/docs/how-to/set-up-high-availability |
 | Site-to-site networking | https://tailscale.com/docs/features/site-to-site |
-| ACL reference | https://tailscale.com/docs/reference/syntax/policy-file |
-| Troubleshooting | https://tailscale.com/docs/reference/troubleshooting |
+| ACL policy syntax | https://tailscale.com/docs/reference/syntax/policy-file |
+| Troubleshooting guide | https://tailscale.com/docs/reference/troubleshooting |
+| Device connectivity | https://tailscale.com/kb/1463/troubleshoot-connectivity |
+| Cloud subnet troubleshooting | https://tailscale.com/docs/reference/troubleshooting/cloud/subnet-connectivity |
+| Overlapping route failover | https://tailscale.com/docs/reference/troubleshooting/network-configuration/overlapping-subnet-route-failover |
+| Key expiry | https://tailscale.com/docs/features/access-control/key-expiry |
 | DERP explanation | https://tailscale.com/blog/how-tailscale-works |
+| Generate bug report | https://tailscale.com/docs/account/bug-report |
