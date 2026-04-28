@@ -342,6 +342,8 @@ Check `login.tailscale.com/admin/acls` — ensure grant exists:
 }
 ```
 
+**Note:** "ACL blocking subnet traffic only becomes an issue once you've replaced the default allow-all grant with explicit least-privilege grants."
+
 ---
 
 ### Issue 4 — Cloud subnet router not forwarding traffic

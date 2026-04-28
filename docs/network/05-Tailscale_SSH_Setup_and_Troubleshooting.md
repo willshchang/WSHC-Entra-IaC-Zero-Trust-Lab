@@ -1,5 +1,4 @@
-Haha the doc chat doesn't have our formatting context — that's why it looks different! Here's the properly formatted version:
-markdown# Tailscale SSH — Setup, Identity & Troubleshooting
+# Tailscale SSH Setup and Troubleshooting
 
 **Document Type:** Admin Technical Reference  
 **Author:** Will Chang, Tailscale Customer Success Engineer  

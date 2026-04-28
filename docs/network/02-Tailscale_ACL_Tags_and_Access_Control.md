@@ -574,18 +574,6 @@ Zero Trust principle behind it. 🚀
 
 ---
 
-### Official References
-
-| Topic | URL |
-|---|---|
-| ACL policy syntax | https://tailscale.com/docs/reference/syntax/policy-file |
-| Groups in ACL | https://tailscale.com/kb/1337/acl-syntax#groups |
-| Port-based grants | https://tailscale.com/kb/1337/acl-syntax#grants |
-| Tags | https://tailscale.com/kb/1068/acl-tags |
-| Default deny | https://tailscale.com/blog/access-control-best-practices |
-
----
-
 ### Multi-user groups mirroring Entra ID
 
 ```json
@@ -684,8 +672,11 @@ access too. Design both systems together.
 
 | Topic | URL |
 |---|---|
-| ACL syntax | https://tailscale.com/docs/reference/syntax/policy-file |
+| ACL policy syntax | https://tailscale.com/docs/reference/syntax/policy-file |
 | Tags | https://tailscale.com/kb/1068/acl-tags |
 | Access control | https://tailscale.com/docs/features/access-control |
 | ACL examples | https://tailscale.com/docs/reference/examples/acls |
 | Grant examples | https://tailscale.com/docs/reference/examples/grants |
+| Groups in ACL | https://tailscale.com/kb/1337/acl-syntax#groups |
+| Port-based grants | https://tailscale.com/kb/1337/acl-syntax#grants |
+| Default deny | https://tailscale.com/blog/access-control-best-practices |

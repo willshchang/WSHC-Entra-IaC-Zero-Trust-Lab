@@ -1,4 +1,4 @@
-# Tailscale — How It Works in the Real World
+# Tailscale — Patterns From My Field
 
 **Document Type:** Conceptual Reference  
 **Author:** Will Chang, Tailscale Customer Success Engineer  
@@ -72,6 +72,7 @@ responds to the exit node, which sends the response back
 to you — encrypted — through your ISP.
 
 **The full journey with exit node:**
+```
 Your device
 ↓ encrypted WireGuard packet
 Your ISP (Telus) — sees encrypted traffic only, cannot throttle
@@ -85,7 +86,7 @@ Exit node
 Your ISP (Telus)
 ↓
 Your device — decrypts and displays
-
+```
 ---
 
 ## wgeasy vs Tailscale Exit Node
