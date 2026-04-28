@@ -54,6 +54,211 @@ any resource.
 | SSH | Tailscale SSH — identity authenticated, no password |
 | Port 22 | Closed via Azure NSG — public internet cannot reach |
 
+---
+
+## Azure VNet — Understanding the Cloud Network Layer
+
+**VNet** (Virtual Network) is Azure's term for a 
+**VPC (Virtual Private Cloud)** — a private, isolated network 
+inside Azure that you define and control. Think of it as 
+your office LAN, but hosted in the cloud.
+
+### Why VNet Exists
+
+Without a VNet, every Azure VM would be directly exposed to 
+the public internet — no private network, no internal routing, 
+no security boundary. A VNet gives you a private IP space, 
+firewall control via NSG (Network Security Group), and 
+isolation from other Azure customers.
+
+### Lab VNet Layout
+
+When `tinyco-vm` was deployed, Azure automatically placed it 
+inside a VNet:
+Azure Cloud
+└── VNet — 10.0.0.0/24
+└── tinyco-vm
+├── Private IP: 10.0.0.4 (internal, VNet only)
+└── Public IP:  20.63.73.34 (internet-facing, port 22 closed)
+
+This is visible in the VM's routing table:
+
+```bash
+ip route show
+
+# Output:
+default via 10.0.0.1 dev eth0       ← Azure internet gateway
+10.0.0.0/24 dev eth0                ← VNet private subnet
+```
+
+The `10.0.0.0/24` is the VNet subnet. The VM lives inside 
+it with a private IP of `10.0.0.4`.
+
+### RFC 1918 — Private IP Ranges
+
+VNet IP ranges follow **RFC 1918** — the internet standard 
+for private network addresses. These ranges are reserved and 
+never appear on the public internet:
+
+| Range | Common use |
+|---|---|
+| `10.0.0.0/8` | Large enterprise networks, cloud VPCs |
+| `172.16.0.0/12` | Mid-size networks, Docker default |
+| `192.168.0.0/16` | Home networks, small offices |
+
+> **Lab comparison:** Your home LAN uses `192.168.1.0/24` 
+> (RFC 1918). Azure VNet uses `10.0.0.0/24` (RFC 1918). 
+> Tailscale uses `100.64.0.0/10` — a separate reserved range 
+> called CGNAT, purpose-built for overlay networks like 
+> Tailscale's mesh.
+
+### VNet vs Home LAN vs Tailscale
+
+| | Home LAN | Azure VNet | Tailscale |
+|---|---|---|---|
+| **Location** | Physical router | Azure cloud | Virtual overlay — anywhere |
+| **Private IP range** | `192.168.1.0/24` | `10.0.0.0/24` | `100.x.x.x` |
+| **Controls it** | ASUS router / Telus modem | Azure portal / Terraform NSG | Tailscale ACL policy |
+| **Internet access** | Via Telus modem | Via Azure internet gateway | Via exit node |
+| **Connects to Tailscale** | Via Apple TV subnet router | VM is direct Tailnet member | Native |
+| **Firewall** | Router rules | NSG inbound/outbound rules | ACL policy |
+
+### Production VNet Design
+
+In a production environment, a VNet would be segmented into 
+multiple subnets — each with its own NSG rules and access 
+controls:
+Azure VNet (10.0.0.0/16)
+├── Web subnet      (10.0.1.0/24) — public-facing, port 443 open
+├── Database subnet (10.0.2.0/24) — no internet, internal only
+└── Admin subnet    (10.0.3.0/24) — Tailscale SSH only, port 22 closed
+
+Tailscale bridges all of these — engineers SSH directly into 
+the admin subnet via Tailscale identity, databases stay 
+completely private, web servers remain public. Zero Trust 
+enforced at every layer.
+
+> **Key insight:** The Azure VNet is the cloud equivalent of 
+> your home LAN. Both are private networks sitting behind a 
+> gateway, with firewall rules controlling what comes in and 
+> out. Tailscale connects them transparently — without opening 
+> ports, without a traditional VPN, and without exposing 
+> private IP ranges to the internet.
+
+### Official References
+
+| Topic | URL |
+|---|---|
+| Azure VNet overview | https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-overview |
+| RFC 1918 private ranges | https://datatracker.ietf.org/doc/html/rfc1918 |
+| Azure NSG | https://learn.microsoft.com/en-us/azure/virtual-network/network-security-groups-overview |
+| Tailscale CGNAT range | https://tailscale.com/blog/how-tailscale-works#cgnat-address-space |
+
+Put it right under the VNet section — it flows naturally there since you just introduced the IP ranges in the table. Reading order becomes:
+VNet section → explains 10.0.0.0/24
+    ↓
+RFC 1918 section → explains WHY that range exists
+    ↓
+Reader fully understands the network addressing story
+Here's the section:
+markdown---
+
+## RFC 1918 — Private IP Addressing Explained
+
+When you see IP addresses like `10.0.0.4`, `192.168.1.254`, 
+or `172.17.0.0` — these are **private IP addresses** defined 
+by **RFC 1918** (Request for Comments 1918), the internet 
+standard published by IETF (Internet Engineering Task Force) 
+that reserves specific IP ranges exclusively for private 
+networks.
+
+These ranges are guaranteed to never appear on the public 
+internet — routers on the internet are configured to drop 
+packets with RFC 1918 source or destination addresses. This 
+makes them safe to reuse across millions of private networks 
+without conflict.
+
+### The Three RFC 1918 Ranges
+
+| Range | Size | Common use |
+|---|---|---|
+| `10.0.0.0/8` | ~16 million addresses | Large enterprise networks, cloud VPCs |
+| `172.16.0.0/12` | ~1 million addresses | Mid-size networks, Docker default |
+| `192.168.0.0/16` | ~65,000 addresses | Home networks, small offices |
+
+> **Why so many addresses?** Large organisations like 
+> hospitals, universities, and cloud providers need thousands 
+> of internal IP addresses. `10.0.0.0/8` gives ~16 million — 
+> enough for even the largest enterprise. Home networks only 
+> need a few dozen, so `192.168.x.x` is sufficient.
+
+### How This Appears in Our Lab
+
+Every network in the lab uses RFC 1918 ranges:
+
+| Network | Range | RFC 1918 block |
+|---|---|---|
+| Azure VNet | `10.0.0.0/24` | `10.0.0.0/8` |
+| Docker internal | `172.17.0.0/16` | `172.16.0.0/12` |
+| Home LAN | `192.168.1.0/24` | `192.168.0.0/16` |
+| Tailscale | `100.64.0.0/10` | CGNAT — separate standard |
+
+### Tailscale's Special Range — CGNAT
+
+Tailscale uses `100.64.0.0/10` — a range defined by a 
+different standard called **CGNAT (Carrier-Grade NAT)**, 
+originally reserved for ISPs. Tailscale chose this range 
+deliberately because:
+
+- It is not RFC 1918 — so it doesn't conflict with common 
+  corporate or home network ranges
+- It is not routable on the public internet
+- It is unlikely to be used by any existing private network
+
+This is why every Tailscale device gets a `100.x.x.x` IP — 
+it is Tailscale's own private overlay network address space, 
+separate from your home LAN or cloud VPC.
+
+```bash
+# All three private ranges visible in our lab at once:
+tailscale status
+# 100.93.4.6  tinyco-vm     ← Tailscale CGNAT range
+
+ip route show  # on Azure VM
+# 10.0.0.0/24 dev eth0      ← Azure VNet RFC 1918
+# 172.17.0.0/16 dev docker0 ← Docker RFC 1918
+
+# Home network
+# 192.168.1.0/24            ← Home LAN RFC 1918
+```
+
+### Why This Matters for Subnet Routing
+
+Understanding RFC 1918 ranges is essential for subnet router 
+configuration — you must advertise the correct private range:
+
+```bash
+# Correct — advertises the actual home LAN range
+sudo tailscale set --advertise-routes=192.168.1.0/24
+
+# Wrong — advertising a public IP range would be blocked
+sudo tailscale set --advertise-routes=8.8.8.0/24
+```
+
+> **Interview tip:** When a customer says "my subnet router 
+> isn't working" — always confirm they are advertising a 
+> valid RFC 1918 range, not a public IP range or an 
+> overlapping range that conflicts with another subnet.
+
+### Official References
+
+| Topic | URL |
+|---|---|
+| RFC 1918 standard | https://datatracker.ietf.org/doc/html/rfc1918 |
+| Tailscale CGNAT range | https://tailscale.com/blog/how-tailscale-works#cgnat-address-space |
+| Tailscale IP addressing | https://tailscale.com/kb/1015/100.x-addresses |
+| Docker networking | https://docs.docker.com/network/ |
+
 ### Site B — Home LAN
 
 | Property | Value |
