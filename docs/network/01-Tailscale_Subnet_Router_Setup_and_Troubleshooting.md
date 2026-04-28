@@ -261,6 +261,7 @@ perfectly.
 ---
 
 ## Correct Troubleshooting Flow
+```
 ping fails to subnet device
 ↓
 tailscale status
@@ -284,7 +285,7 @@ If still failing → check ACL policy
 ↓
 If cloud environment → check security groups/NSG
 → Is inbound/outbound subnet traffic allowed?
-
+```
 ---
 
 ## Common Issues
@@ -642,6 +643,98 @@ https://tailscale.com/docs/how-to/set-up-high-availability
 | `ip route show` | Linux kernel routing table | Non-Tailscale routing only |
 | `sysctl net.ipv4.ip_forward` | IP forwarding status | Linux subnet router check |
 | `tailscale bugreport` | Compressed log bundle for support | Escalating to Tailscale |
+
+---
+
+### Extended Discovery — Including Self and Device Settings
+
+## Discovering Subnet Routers via CLI
+
+The Tailscale admin console shows subnet routers visually 
+via the **Subnets** badge. For CLI-based discovery — useful 
+for scripting, automation, or remote troubleshooting — use 
+the following command from any device on your tailnet.
+
+### Identify All Active Subnet Routers
+
+Run from any connected Tailscale device:
+
+```bash
+tailscale status --json | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+
+# Check if this device itself is a subnet router
+self = data.get('Self', {})
+self_routes = self.get('PrimaryRoutes', []) or \
+              self.get('AdvertisedRoutes', [])
+if self_routes:
+    print('[SELF]', self.get('HostName'))
+    print('  Routes:', self_routes)
+
+# Check all peers
+for peer in data.get('Peer',{}).values():
+    routes = peer.get('PrimaryRoutes',[])
+    advertised = peer.get('AdvertisedRoutes',[])
+    if routes or advertised:
+        print('[PEER]', peer['HostName'], '—', peer['OS'])
+        print('  Primary:', routes)
+        print('  Advertised:', advertised)
+"
+```
+
+**Example output — lab environment:**
+[PEER] iwilltvliving — tvOS
+Primary: ['192.168.1.0/24']
+Advertised: []
+[PEER] iwilltvmaster — tvOS
+Primary: []
+Advertised: ['192.168.1.0/24']
+
+**Reading the output:**
+
+| Field | Meaning |
+|---|---|
+| `[SELF]` | This device is a subnet router |
+| `[PEER]` | Another device on the tailnet |
+| `Primary` | Active subnet router for this range |
+| `Advertised` | Standby — advertising but not primary (HA) |
+| Empty both | Not a subnet router |
+
+> **Note on display names:** The CLI shows Tailscale hostnames 
+> (e.g. `iwilltvliving`) — not the custom display names set 
+> in the admin console. For human-readable names, the admin 
+> console **Machines** page remains the clearest reference.
+
+### Check Your Own Device's Route Settings
+
+```bash
+tailscale debug prefs | grep -i route
+```
+
+**Key fields to look for:**
+
+| Field | Value | Meaning |
+|---|---|---|
+| `RouteAll` | `true` | This device accepts all subnet routes |
+| `AdvertiseRoutes` | `["192.168.1.0/24"]` | This device is a subnet router |
+| `AdvertiseRoutes` | `["0.0.0.0/0", "::/0"]` | This device is an exit node |
+
+> **Lab discovery:** Running `tailscale debug prefs` on the 
+> Windows PC revealed it was advertising `0.0.0.0/0` and 
+> `::/0` — confirming it was operating as an exit node. 
+> This is visible in `tailscale status` as `offers exit node` 
+> next to the device.
+
+### When to Use CLI vs Admin Console
+
+| Scenario | Best tool |
+|---|---|
+| Quick visual overview of all devices | Admin console |
+| Scripting or automation | CLI — `tailscale status --json` |
+| Verifying during live troubleshooting | CLI — faster, no browser needed |
+| Checking your own device settings | CLI — `tailscale debug prefs` |
+| Approving subnet routes | Admin console only |
 
 ---
 

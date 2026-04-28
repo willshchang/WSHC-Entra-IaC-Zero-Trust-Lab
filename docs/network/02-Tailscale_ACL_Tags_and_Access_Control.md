@@ -400,6 +400,192 @@ rule is missing from the policy.
 
 ## Production Enhancements
 
+---
+
+## Production ACL Design — Multi-Site, Role and Function Based
+
+The lab ACL uses a single identity (`will.sh.chang@gmail.com`) 
+with full access — appropriate for a personal lab. In 
+production, ACL policy becomes significantly more granular, 
+reflecting the organisation's site structure, team roles, 
+and specific application functions.
+
+The design principle stays the same — identity drives access, 
+tags define infrastructure roles. The difference is specificity.
+
+---
+
+### The Three-Layer Design Framework
+
+Every ACL grant answers three questions:
+WHO (src)         → WHAT (dst)          → HOW (ip/port)
+group:engineering → tag:server          → tcp:22 only
+group:finance     → tag:payroll         → tcp:8443 only
+group:hq-staff    → 192.168.1.0/24     → all ports
+group:itops       → everything          → everything
+
+This maps directly to the Entra ID RBAC model:
+
+| Entra ID Group | Tailscale Group | Access |
+|---|---|---|
+| `TinyCo-ITOps` | `group:itops` | All sites, all ports |
+| `TinyCo-SRE` | `group:sre` | Servers only, SSH + HTTPS |
+| `TinyCo-Finance` | `group:finance` | Payroll server, specific port |
+| `TinyCo-HQ-Staff` | `group:hq-staff` | HQ subnet only |
+| `TinyCo-Branch-Staff` | `group:branch-staff` | Branch subnet only |
+
+Same roles defined once in Entra ID — enforced at both 
+identity layer (Entra SSO) and network layer (Tailscale ACL).
+
+---
+
+### Site-Based Access Control
+
+Different office sites have different subnets. Staff should 
+only reach the subnet for their site — not all sites.
+
+```json
+"groups": {
+    "group:itops":        ["will@tinyco.com"],
+    "group:hq-staff":     ["alice@tinyco.com", "bob@tinyco.com"],
+    "group:branch-staff": ["carol@tinyco.com", "dave@tinyco.com"],
+    "group:sre":          ["eve@tinyco.com"]
+},
+
+"grants": [
+    // ITOps — full access to all sites and infrastructure
+    {
+        "src": ["group:itops"],
+        "dst": ["192.168.1.0/24", "10.10.0.0/24", "tag:server"],
+        "ip":  ["*"]
+    },
+    // HQ staff — HQ subnet only
+    // Can reach printers, APs, local devices at HQ
+    {
+        "src": ["group:hq-staff"],
+        "dst": ["192.168.1.0/24"],
+        "ip":  ["*"]
+    },
+    // Branch staff — branch subnet only
+    // Cannot reach HQ subnet at all (implicit deny)
+    {
+        "src": ["group:branch-staff"],
+        "dst": ["10.10.0.0/24"],
+        "ip":  ["*"]
+    },
+    // SRE — servers only, SSH and HTTPS
+    {
+        "src": ["group:sre"],
+        "dst": ["tag:server"],
+        "ip":  ["tcp:22", "tcp:443"]
+    }
+]
+```
+
+---
+
+### Function-Based Access — Specific Ports
+
+Beyond site-level access, production ACLs restrict by 
+application function — only the ports needed for the job.
+
+```json
+// Engineers — SSH and HTTPS to servers only
+{
+    "src": ["group:engineering"],
+    "dst": ["tag:server"],
+    "ip":  ["tcp:22", "tcp:443"]
+},
+// Finance — payroll application only, specific port
+{
+    "src": ["group:finance"],
+    "dst": ["tag:payroll-server"],
+    "ip":  ["tcp:8443"]
+},
+// HR — HR database only
+{
+    "src": ["group:hr"],
+    "dst": ["tag:hr-database"],
+    "ip":  ["tcp:5432"]
+},
+// All HQ staff — printing on HQ subnet
+{
+    "src": ["group:hq-staff"],
+    "dst": ["192.168.1.50"],   // HQ printer IP
+    "ip":  ["tcp:631"]         // IPP printing protocol
+}
+```
+
+> **The printer example — Zero Trust in action:**
+> Branch staff attempting to print to the HQ printer 
+> (`192.168.1.50`) are blocked at the ACL level — before 
+> the packet even reaches the subnet router. The connection 
+> never touches the HQ network. This is Zero Trust enforced 
+> at the packet level, not the session level.
+
+---
+
+### The Implicit Deny — Your Silent Security Layer
+
+Tailscale's default deny means you never need to write 
+block rules. Any combination not explicitly listed is 
+automatically blocked:
+Branch staff → HQ printer    = BLOCKED (not listed)
+Finance → Engineering server = BLOCKED (not listed)
+HR → Payroll server          = BLOCKED (not listed)
+Engineering → HR database    = BLOCKED (not listed)
+
+In a traditional VPN, once connected you reach everything. 
+In Tailscale with explicit ACLs, being connected means 
+nothing — you only reach what your identity explicitly permits.
+
+---
+
+### Lab vs Production Comparison
+
+| | Lab (current) | Production (TinyCo) |
+|---|---|---|
+| **Users** | Single identity | Groups per team and site |
+| **Sites** | Azure VM + home LAN | HQ + Branch + Cloud VPC |
+| **Port control** | `["*"]` all ports | Specific ports per function |
+| **Device tags** | `tag:server`, `tag:subnet-router` | `tag:server`, `tag:payroll`, `tag:hr-database`, `tag:printer` |
+| **Subnet access** | All subnets to one user | Site-specific per group |
+| **Printer access** | Not applicable | HQ staff → HQ printer only |
+| **Implicit denies** | Basic | Comprehensive — finance can't reach engineering |
+
+---
+
+### Interview Framing
+
+When a customer asks:
+> *"How do I stop my branch office from accessing HQ 
+> resources over Tailscale?"*
+
+Your answer:
+> *"By default Tailscale allows all tailnet devices to 
+> reach each other. We replace that with explicit grants — 
+> branch staff get a grant to their own subnet only. 
+> HQ subnet is never listed as a destination for branch 
+> staff, so it's implicitly denied. No block rules needed — 
+> Tailscale's default deny handles it automatically."*
+
+This demonstrates you understand both the product and the 
+Zero Trust principle behind it. 🚀
+
+---
+
+### Official References
+
+| Topic | URL |
+|---|---|
+| ACL policy syntax | https://tailscale.com/docs/reference/syntax/policy-file |
+| Groups in ACL | https://tailscale.com/kb/1337/acl-syntax#groups |
+| Port-based grants | https://tailscale.com/kb/1337/acl-syntax#grants |
+| Tags | https://tailscale.com/kb/1068/acl-tags |
+| Default deny | https://tailscale.com/blog/access-control-best-practices |
+
+---
+
 ### Multi-user groups mirroring Entra ID
 
 ```json
